@@ -36,7 +36,7 @@ We use four models in our experiments.
 | smDRUM             | https://github.com/xiaxia-wang/FaithfulRE       |
 | mmDRUM             | https://github.com/xiaxia-wang/FaithfulRE       |
 
-## Use examples (Transductive datasets)
+## Use examples (Transductive Setting)
 
 For Family, Kinship, and UMLS, you can run the FastLog-enhanced models as bellow:
 
