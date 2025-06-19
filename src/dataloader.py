@@ -100,10 +100,8 @@ class KGDataset(Dataset):
 
         valid_data = pd.read_csv(valid_path, encoding='utf-8', engine='c', sep='\t', header=None,
                                 dtype={0: np.int32, 1: np.int32, 2: np.int32})
-        # valid_data = valid_data.groupby(1)
         test_data = pd.read_csv(test_path, encoding='utf-8', engine='c', sep='\t', header=None,
                                 dtype={0: np.int32, 1: np.int32, 2: np.int32})
-        # test_data = test_data.groupby(1)
         return train_data, valid_data, test_data, entity_dict, id2relation, relation2id, \
                train_triples, relation_sorted
 

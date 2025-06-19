@@ -506,6 +506,4 @@ def max_sp(s):
     return torch.sparse.FloatTensor(indices, values, torch.Size([shape[0], shape[1]]))
 
 def score_function(x):
-    # return torch.minimum(torch.relu(1 + x), torch.ones_like(x))
     return 0.5 + 0.5 * torch.sigmoid(x)
-    # return torch.sigmoid(x)

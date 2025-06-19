@@ -62,7 +62,7 @@ For Freebase, you can run the FastLog-enhanced models as bellow:
 python -u main.py --data_dir ../data/freebase/ --exps_dir ../logs/exps_freebase_drum_seed1234/ --exp_name freebase --batch_size 1 --length 3 --max_epoch 10 --dropout 0. --use_gpu --gpu_id 0  --step 3 --do_train --do_test --max_time 20000 --min_time -1 --learning_rate 1e-3 --accum_step 1 --early_stop --raw --model_name DRUM --seed 1234 --use_topk --sparse
 ```
 
-## Use examples (Inductive datasets)
+## Use examples (Inductive Setting)
 
 For FB15k-237 (Inductive) and NELL-995 (Inductive), you can train the FastLog-enhanced models as bellow:
 

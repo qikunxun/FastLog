@@ -409,7 +409,7 @@ if __name__ == '__main__':
     parser.add_argument('--exp_name', default=None, type=str)
     parser.add_argument('--model_name', default=None, type=str)
     parser.add_argument('--use_gpu',  default=False, action="store_true")
-    parser.add_argument('--gpu_id', default=4, type=int)
+    parser.add_argument('--gpu_id', default=0, type=int)
     # model architecture
     parser.add_argument('--length', default=50, type=int)
     parser.add_argument('--step', default=3, type=int)
@@ -417,8 +417,8 @@ if __name__ == '__main__':
     parser.add_argument('--tau_2', default=1, type=float)
     parser.add_argument('--mask_w', default=False, action="store_true")
     parser.add_argument('--use_topk', default=False, action="store_true")
-    parser.add_argument('--top_k', default=100000, type=int)
-    parser.add_argument('--top_k_mask', default=100000, type=int)
+    parser.add_argument('--top_k', default=100000, type=int) # c_1
+    parser.add_argument('--top_k_mask', default=100000, type=int) # c_2
     parser.add_argument('--emb_size', default=128, type=int)
     parser.add_argument('--lammda', default=0.0, type=float)
     parser.add_argument('--dropout', default=0.1, type=float)
