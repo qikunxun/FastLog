@@ -1,0 +1,6 @@
+python>=3.9
+torch>=2.4.0
+pandas>=2.2.2
+numpy>=1.26.4
+torch-scatter>=2.1.2
+tqdm>=4.66.2
