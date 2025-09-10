@@ -4,9 +4,9 @@
 
 * Python 3.9
 * pytorch 2.4.0
-* Pandas
-* Numpy
-* pytorch_scatter
+* Pandas 2.2.2
+* Numpy 1.26.4
+* pytorch_scatter 2.1.2
 
 ### Datasets
 
