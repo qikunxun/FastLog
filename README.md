@@ -75,3 +75,20 @@ For evaluating the trained model on inductive datasets, you can run:
 ```sh
 python -u inducve_eval.py --data_dir ../data/inductive/fb237_v1_ind/ --exps_dir ../logs/exps_fb237_v1_drum_seed1234_l6/ --exp_name fb237_v1 --batch_size 32 --length 3 --max_epoch 10 --dropout 0. --use_gpu --gpu_id 0  --step 6 --do_test --max_time -1 --min_time -1 --learning_rate 1e-3 --accum_step 1 --early_stop --raw --model_name DRUM --seed 1234
 ```
+
+## Use examples (Transferring Inference)
+
+We also provide a tool to transfer a TensorLog (resp. FastLog) model to a FastLog (resp. TensorLog) model.
+
+To extract the trained weights for a TensorLog model, you can run:
+
+```sh
+python -u main.py trained_path best_ckpt_num
+```
+where trained_path (e.g., ../logs_tensorlog/exps_family_drum_seed1234/) denotes the save path for the trained TensorLog model, and best_ckpt_num (e.g., 8) denotes the best checkpoint that has been saved.
+
+To run the transferring inference, you can run:
+
+```sh
+python -u transfer_inference.py --data_dir ../data/family/ --exps_dir ../logs/exps_family_drum_seed1234/ --exp_name family --batch_size 32 --length 3 --max_epoch 10 --dropout 0. --use_gpu --gpu_id 0  --step 3 --do_test --max_time -1 --min_time -1 --learning_rate 1e-3 --accum_step 1 --early_stop --raw --model_name DRUM --seed 1234 --trained_path ../logs_tensorlog/exps_family_drum_seed1234/
+```
