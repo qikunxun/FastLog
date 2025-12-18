@@ -8,7 +8,6 @@ import os
 import numpy as np
 from tqdm import tqdm
 from dataloader import KGDataset
-from torch.cuda.amp import autocast, GradScaler
 from utils import scatter_sum
 
 class Option(object):
@@ -63,8 +62,9 @@ def create_graph(kg, device):
 
 
 def mask_data(values, indices, score):
-    for index in indices:
-        values[index] = score
+    # for index in indices:
+    #     values[index] = score
+    values[indices] = score
 
 def get_planning(min_time, max_time, relation_rates, test_data, thr=0.8):
     total = 0
@@ -225,7 +225,6 @@ def valid_process(valid_data, dataset, model, e2triple, triple2e, r2triple, grap
             h, r, t = valid_data[0][index], valid_data[1][index], valid_data[2][index]
             data.append({'h': h, 'r': r, 't': t})
             data.append({'h': t, 'r': r + dataset.relation_size, 't': h})
-        # if is_sampled: data = np.random.choice(data, 50)
         if len(data) == 0: return
         if len(data) % batch_size == 0:
             batch_num = int(len(data) / batch_size)
@@ -246,11 +245,7 @@ def valid_process(valid_data, dataset, model, e2triple, triple2e, r2triple, grap
                 input_x = input_x.cuda()
                 input_r = input_r.cuda()
             # input_x = torch.nn.functional.one_hot(input_x, dataset.entity_dict.shape[0]).bool()
-            try:
-                state = model(input_x, input_r, e2triple, triple2e, r2triple, is_training=False)
-            except Exception as e:
-                with autocast(dtype=torch.bfloat16):
-                    state = model(input_x, input_r, e2triple, triple2e, r2triple, is_training=False)
+            state = model(input_x, input_r, e2triple, triple2e, r2triple, is_training=False)
             if option.sparse: state = state.to_dense()
             if name == 'Valid' and option.raw:
                 scores = state.detach().cpu()
@@ -291,17 +286,14 @@ def train(dataset, valid_data, graph_entity, e2triple, triple2e, r2triple, optio
     print('Entity Num:', entity_size)
     print('Relation Num:', len(dataset.relation2id))
     print('Train KG Size:', kg_size)
-    model = Model(len(dataset.relation2id), option.step, option.length, entity_size, e2triple[-1].shape[0],
-                    option.emb_size, option.tau_1, option.tau_2, option.mask_w, option.use_gpu, option.dropout,
-                    option.top_k, option.top_k_mask, option.use_soft, option.use_topk)
+    model = Model(len(dataset.relation2id), option.step, option.length, entity_size, e2triple[-1].shape[0], option.emb_size, 
+                  option.tau_1, option.tau_2, option.use_gpu, option.dropout, option.c, option.use_soft, option.use_topk)
 
     if option.use_gpu:
         model = model.cuda()
         torch.cuda.empty_cache()
     if option.use_soft: model.weight.cpu()
     # model = torch.compile(model)
-    for parameter in model.parameters():
-        print(parameter)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=option.learning_rate)
 
@@ -309,7 +301,7 @@ def train(dataset, valid_data, graph_entity, e2triple, triple2e, r2triple, optio
     max_score = -1
     max_record = {'mrr': 0, 'hit_1': 0, 'hit_3': 0, 'hit_10': 0, 'epoch': 0}
     saved_flag = False
-    scaler = GradScaler()
+    # scaler = GradScaler()
     ori_time = time.time()
     min_time = option.min_time
     for e in range(option.max_epoch):
@@ -343,8 +335,7 @@ def train(dataset, valid_data, graph_entity, e2triple, triple2e, r2triple, optio
                 input_x = input_x.cuda()
                 input_r = input_r.cuda()
                 input_y = input_y.cuda()
-            with autocast(dtype=torch.float32):
-                state = model(input_x, input_r, e2triple, triple2e, r2triple, is_training=True)
+            state = model(input_x, input_r, e2triple, triple2e, r2triple, is_training=True)
             end_time_forward = time.time()
             loss = model.log_loss(state, input_y)
 
@@ -385,12 +376,13 @@ def train(dataset, valid_data, graph_entity, e2triple, triple2e, r2triple, optio
 
 def test(dataset, graph_entity, e2triple, triple2e, r2triple, option):
     model = Model(len(dataset.relation2id), option.step, option.length, dataset.entity_dict.shape[0],
-                    e2triple[-1].shape[0], option.emb_size, option.tau_1, option.tau_2, option.mask_w,
-                    option.use_gpu, option.dropout, option.top_k, option.top_k_mask, option.use_soft, option.use_topk)
+                    e2triple[-1].shape[0], option.emb_size, option.tau_1, option.tau_2,
+                    option.use_gpu, option.dropout, option.c, option.use_soft, option.use_topk)
     if option.ckpt_step == -1:
         model_save_path = os.path.join(option.exp_dir, 'model.pt')
     else:
         model_save_path = os.path.join(option.exp_dir, 'model-{}.0.pt'.format(option.ckpt_step))
+    # model = torch.compile(model)
     model.load_state_dict(torch.load(model_save_path, map_location=torch.device('cpu')))
     if option.use_gpu:
         model = model.cuda()
@@ -409,18 +401,16 @@ if __name__ == '__main__':
     parser.add_argument('--exp_name', default=None, type=str)
     parser.add_argument('--model_name', default=None, type=str)
     parser.add_argument('--use_gpu',  default=False, action="store_true")
-    parser.add_argument('--gpu_id', default=0, type=int)
+    parser.add_argument('--gpu_id', default=4, type=int)
     # model architecture
-    parser.add_argument('--length', default=50, type=int)
+    parser.add_argument('--length', default=3, type=int)
     parser.add_argument('--step', default=3, type=int)
     parser.add_argument('--tau_1', default=1, type=float)
     parser.add_argument('--tau_2', default=1, type=float)
-    parser.add_argument('--mask_w', default=False, action="store_true")
     parser.add_argument('--use_topk', default=False, action="store_true")
-    parser.add_argument('--top_k', default=100000, type=int) # c_1
-    parser.add_argument('--top_k_mask', default=100000, type=int) # c_2
+    parser.add_argument('--c', default=100000, type=int)
     parser.add_argument('--emb_size', default=128, type=int)
-    parser.add_argument('--lammda', default=0.0, type=float)
+    parser.add_argument('--lambda', default=0.0, type=float)
     parser.add_argument('--dropout', default=0.1, type=float)
     parser.add_argument('--eval_top', default=False, action="store_true")
     parser.add_argument('--sparse', default=False, action="store_true")
@@ -429,7 +419,7 @@ if __name__ == '__main__':
     parser.add_argument('--max_epoch', default=50, type=int)
     parser.add_argument('--batch_size', default=32, type=int)
     parser.add_argument('--accum_step', default=1, type=int)
-    parser.add_argument('--iteration_per_batch', default=300000, type=int)
+    parser.add_argument('--iteration_per_batch', default=100000, type=int)
     parser.add_argument('--learning_rate', default=1e-3, type=float)
     parser.add_argument('--early_stop', default=False, action="store_true")
     parser.add_argument('--do_train', default=False, action="store_true")
@@ -440,8 +430,6 @@ if __name__ == '__main__':
     parser.add_argument('--max_time', default=-1, type=float)
     parser.add_argument('--min_time', default=-1, type=float)
     parser.add_argument('--threshold', default=1e-6, type=float)
-    parser.add_argument('--negative_sampling_size', default=100, type=int)
-    parser.add_argument('--prob', default=0.9, type=float)
     parser.add_argument('--seed', default=1234, type=int)
     parser.add_argument('--ckpt_step', default=-1, type=int)
 

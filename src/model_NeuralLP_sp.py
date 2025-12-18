@@ -1,11 +1,11 @@
 import torch
 from torch import nn
-from utils import sparse_matrix_multiply_sp, sparse_matrix_multiply_L_sp, log_loss_common_sp, norm_sp, sum_sp
+from utils import vectorized_operation_sp, log_loss_common_sp, norm_sp, sum_sp
 
 device = torch.device('cuda')
 class Model(nn.Module):
-    def __init__(self, n, T, L, E, N, emb_size, tau_1=10, tau_2=0.2, mask_w=False, use_gpu=False,
-                 dropout=0.1, top_k=1000, top_k_mask=100000, use_soft=False, use_topk=False):
+    def __init__(self, n, T, L, E, N, emb_size, tau_1=1, tau_2=1, use_gpu=False,
+                 dropout=0.1, c=100000, use_soft=False, use_topk=False):
         super(Model, self).__init__()
         self.T = T
         self.L = L
@@ -18,9 +18,7 @@ class Model(nn.Module):
         self.emb_size = emb_size
         self.tau_1 = tau_1
         self.tau_2 = tau_2
-        self.mask_w = mask_w
-        self.top_k = top_k
-        self.top_k_mask = top_k_mask
+        self.c = c
         self.emb = nn.Embedding(self.n + 1, self.emb_size)
         self.lstm = torch.nn.LSTM(
                 self.emb_size, self.emb_size,
@@ -66,23 +64,13 @@ class Model(nn.Module):
             input = torch.sparse.sum(input, dim=0)
             if t < self.T:
                 w_probs = w_all[:, t, :].unsqueeze(dim=1)
-                if t == 0:
-                    _, s_h, s_t = sparse_matrix_multiply_sp(input_x,
-                                        (e2triple[0], triple2e[1], r2triple[0], e2triple[2], w_probs),
-                                        E, self.r_size, self.tau_1, is_training, wot_i=True,
-                                        weight=self.weight)
-                    s = s_h + s_t
-                    # if is_training: s = self.dropout(s)
-                if t >= 1:
-                    x = input  # [b, L, E]
-                    _, s_h, s_t = sparse_matrix_multiply_L_sp(x,
-                                        (e2triple[0], triple2e[1], r2triple[0], e2triple[2], w_probs),
-                                        E, self.r_size, self.tau_1, is_training, self.dropout,
-                                        top_k=self.top_k, topk_pruning=self.top_k_mask,
-                                        wot_i=True, weight=self.weight, use_topk=self.use_topk)
-                    s = s_h + s_t
-
-                    # if is_training: s = self.dropout(s)
+                w = torch.softmax(w_probs / self.tau_1, dim=-1)
+                x = input  # [b, L, E]
+                _, s_h, s_t = vectorized_operation_sp(x,
+                                    (e2triple[0], triple2e[1], r2triple[0], e2triple[2], w),
+                                    E, self.r_size, topk_pruning=self.c,
+                                    wot_i=True, weight=self.weight, use_topk=self.use_topk)
+                s = s_h + s_t
                 s = norm_sp(s)
             else:
                 s = input
